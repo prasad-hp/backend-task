@@ -60,26 +60,7 @@ router.post("/", async (req: Request, res: Response) => {
             }
           });
       
-          // Case 1: No matching contact found
-          if (contacts.length === 0) {
-            const newContact = await prisma.contact.create({
-              data: {
-                email,
-                phoneNumber,
-                linkPrecedence: 'primary'
-              }
-            });
-      
-            return res.status(200).json({
-              contact: {
-                primaryContactId: newContact.id,
-                emails: [newContact.email].filter(Boolean),
-                phoneNumbers: [newContact.phoneNumber].filter(Boolean),
-                secondaryContactIds: []
-              }
-            });
-          }
-              // Case 2: Matching contact(s) found
+              // Case 1.1: Matching contact(s) found
           let primaryContact = contacts.find(contact => contact.linkPrecedence === 'primary');
           if (!primaryContact) {
           primaryContact = contacts[0];
@@ -111,27 +92,9 @@ router.post("/", async (req: Request, res: Response) => {
               ]
             }
           });
-      
-          // Case 1: No matching contact found
-          if (contacts.length === 0) {
-            const newContact = await prisma.contact.create({
-              data: {
-                email,
-                phoneNumber,
-                linkPrecedence: 'primary'
-              }
-            });
-      
-            return res.status(200).json({
-              contact: {
-                primaryContactId: newContact.id,
-                emails: [newContact.email].filter(Boolean),
-                phoneNumbers: [newContact.phoneNumber].filter(Boolean),
-                secondaryContactIds: []
-              }
-            });
-          }
-              // Case 2: Matching contact(s) found
+
+
+              // Case 2.2: Matching contact(s) found
           let primaryContact = contacts.find(contact => contact.linkPrecedence === 'primary');
           if (!primaryContact) {
           primaryContact = contacts[0];
