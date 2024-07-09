@@ -29,6 +29,9 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         return res.status(400).json({ error: 'Email or phoneNumber is required' });
     }
     try {
+        if (email === null && phoneNumber === null) {
+            return res.status(400).json({ error: 'please provide valid data' });
+        }
         const contacts = yield prisma.contact.findMany({
             where: {
                 OR: [
@@ -54,9 +57,6 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                     secondaryContactIds: []
                 }
             });
-        }
-        if (email && phoneNumber === null) {
-            return res.status(400).json({ error: 'please provide valid data' });
         }
         if (email === null && phoneNumber !== null) {
             const contacts = yield prisma.contact.findMany({
@@ -94,7 +94,7 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 });
             }
             const secondaryContacts = contacts.filter(contact => contact.id !== primaryContact.id);
-            // Check if both email and phone number match any existing contact
+            // Check if phone number match any existing contact
             if (contacts.some(contact => contact.phoneNumber === phoneNumber)) {
                 return res.status(200).json({
                     contact: {
@@ -142,7 +142,7 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 });
             }
             const secondaryContacts = contacts.filter(contact => contact.id !== primaryContact.id);
-            // Check if both email and phone number match any existing contact
+            // Check if email match any existing contact
             if (contacts.some(contact => contact.email === email)) {
                 return res.status(200).json({
                     contact: {
