@@ -1,0 +1,88 @@
+import express, { Request, Response } from "express";
+import { PrismaClient } from "@prisma/client";
+import contactSchema from "../validators/contactSchema";
+
+const router = express.Router();
+const prisma = new PrismaClient();
+
+router.post("/", async (req: Request, res: Response) => {
+  const userInput = req.body;
+  
+  const parsedData = contactSchema.safeParse(userInput);
+  if (!parsedData.success) {
+    return res.status(400).json(parsedData.error.issues[0].message || "Please enter valid data");
+  }
+
+  const { email, phoneNumber } = userInput;
+
+  if (!email && !phoneNumber) {
+    return res.status(400).json({ error: 'Email or phoneNumber is required' });
+  }
+
+  try {
+    const contacts = await prisma.contact.findMany({
+      where: {
+        OR: [
+          { email },
+          { phoneNumber }
+        ]
+      }
+    });
+
+    if (contacts.length === 0) {
+      const newContact = await prisma.contact.create({
+        data: {
+          email,
+          phoneNumber,
+          linkPrecedence: 'primary'
+        }
+      });
+
+      return res.status(200).json({
+        contact: {
+          primaryContactId: newContact.id,
+          emails: [newContact.email].filter(Boolean),
+          phoneNumbers: [newContact.phoneNumber].filter(Boolean),
+          secondaryContactIds: []
+        }
+      });
+    }
+
+    let primaryContact = contacts.find(contact => contact.linkPrecedence === 'primary');
+    if (!primaryContact) {
+      primaryContact = contacts[0];
+      await prisma.contact.update({
+        where: { id: primaryContact.id },
+        data: { linkPrecedence: 'primary' }
+      });
+    }
+
+    const secondaryContacts = contacts.filter(contact => contact.id !== primaryContact.id);
+
+    if (!secondaryContacts.some(contact => contact.email === email && contact.phoneNumber === phoneNumber)) {
+      const newSecondaryContact = await prisma.contact.create({
+        data: {
+          email,
+          phoneNumber,
+          linkedId: primaryContact.id,
+          linkPrecedence: 'secondary'
+        }
+      });
+      secondaryContacts.push(newSecondaryContact);
+    }
+
+    return res.status(200).json({
+      contact: {
+        primaryContactId: primaryContact.id,
+        emails: [primaryContact.email, ...secondaryContacts.map(contact => contact.email)].filter(Boolean),
+        phoneNumbers: [primaryContact.phoneNumber, ...secondaryContacts.map(contact => contact.phoneNumber)].filter(Boolean),
+        secondaryContactIds: secondaryContacts.map(contact => contact.id)
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+export default router;
